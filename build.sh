@@ -81,7 +81,6 @@ run_emcc() {
         --pre-js pre.js \
         --js-library runtime.js \
         -s "EXPORTED_FUNCTIONS=['_main','_gui_wasm_send_key']" -s "EXTRA_EXPORTED_RUNTIME_METHODS=['cwrap']" \
-        -s EMTERPRETIFY=1 -s EMTERPRETIFY_ASYNC=1 -s 'EMTERPRETIFY_FILE="emterpretify.data"' \
         --preload-file usr \
         $extraflags \
 
@@ -107,8 +106,7 @@ run_deploy() {
     mv _style.css style.css
     cp wasm/index.* .
     rm index.js.orig.js
-    cp wasm/emterpretify.data .
-    git add index.* emterpretify.data
+    git add index.*
     git commit -m "Deploy from ${hash}"
     echo "build.sh: Commit created. Please check diff with 'git show' and deploy it with 'git push'"
 }

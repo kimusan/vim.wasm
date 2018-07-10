@@ -1282,8 +1282,7 @@ gui_mch_draw_part_cursor(int w, int h, guicolor_T color)
 void
 gui_mch_update(void)
 {
-    // TODO?: If there is a queued message events, process them
-    emscripten_sleep(1);
+    // Nothing to do
 }
 
 /*
@@ -1310,6 +1309,24 @@ gui_mch_wait_for_chars(int wtime)
         }
         emscripten_sleep(step);
     }
+}
+
+void
+gui_mch_wait_for_chars_async(int wtime, void (*callback)(int))
+{
+    if (input_available()) {
+        callback(OK);
+        return;
+    }
+    if (wtime < 0) {
+        // TODO: Start timer in javascript with wtime
+        return;
+    }
+    if ((wtime - 10) < 0) {
+        callback(FAIL);
+        return;
+    }
+    // TODO: Start timer in javascript with wtime
 }
 
 /* Flush any output to the screen */

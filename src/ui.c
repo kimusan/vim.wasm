@@ -112,6 +112,7 @@ ui_inchar_undo(char_u *s, int len)
  * from a remote client) "buf" can no longer be used.  "tb_change_cnt" is NULL
  * otherwise.
  */
+#ifndef FEAT_GUI_WASM
     int
 ui_inchar(
     char_u	*buf,
@@ -205,6 +206,128 @@ theend:
 #endif
     return retval;
 }
+
+#else /* FEAT_GUI_WASM */
+
+static void (*ui_inchar_async_callback_)(int);
+static long ui_inchar_async_wtime_;
+
+void
+ui_inchar_async_callback(int retval)
+{
+    long wtime = ui_inchar_async_wtime_;
+    if (wtime == -1 || wtime > 100L)
+	/* block SIGHUP et al. */
+	(void)vim_handle_signal(SIGNAL_BLOCK);
+
+    ctrl_c_interrupts = TRUE;
+    ui_inchar_async_callback_(retval);
+}
+
+void
+ui_inchar_async(
+    char_u	*buf,
+    int		maxlen,
+    long	wtime,	    /* don't use "time", MIPS cannot handle it */
+    int		tb_change_cnt,
+    void	(*callback)(int))
+{
+    int		retval = 0;
+
+#if defined(FEAT_GUI) && (defined(UNIX) || defined(VMS))
+    /*
+     * Use the typeahead if there is any.
+     */
+    if (ta_str != NULL)
+    {
+	if (maxlen >= ta_len - ta_off)
+	{
+	    mch_memmove(buf, ta_str + ta_off, (size_t)ta_len);
+	    VIM_CLEAR(ta_str);
+	    callback(ta_len);
+	    return;
+	}
+	mch_memmove(buf, ta_str + ta_off, (size_t)maxlen);
+	ta_off += maxlen;
+	callback(maxlen);
+	return;
+    }
+#endif
+
+#ifdef FEAT_PROFILE
+    if (do_profiling == PROF_YES && wtime != 0)
+	prof_inchar_enter();
+#endif
+
+#ifdef NO_CONSOLE_INPUT
+    /* Don't wait for character input when the window hasn't been opened yet.
+     * Do try reading, this works when redirecting stdin from a file.
+     * Must return something, otherwise we'll loop forever.  If we run into
+     * this very often we probably got stuck, exit Vim. */
+    if (no_console_input())
+    {
+	static int count = 0;
+
+# ifndef NO_CONSOLE
+	retval = mch_inchar(buf, maxlen, (wtime >= 0 && wtime < 10)
+						? 10L : wtime, tb_change_cnt);
+	if (retval > 0 || typebuf_changed(tb_change_cnt) || wtime >= 0)
+	    goto theend;
+# endif
+	if (wtime == -1 && ++count == 1000)
+	    read_error_exit();
+	buf[0] = CAR;
+	retval = 1;
+	goto theend;
+    }
+#endif
+
+    /* If we are going to wait for some time or block... */
+    if (wtime == -1 || wtime > 100L)
+    {
+	/* ... allow signals to kill us. */
+	(void)vim_handle_signal(SIGNAL_UNBLOCK);
+
+	/* ... there is no need for CTRL-C to interrupt something, don't let
+	 * it set got_int when it was mapped. */
+	if ((mapped_ctrl_c | curbuf->b_mapped_ctrl_c) & get_real_state())
+	    ctrl_c_interrupts = FALSE;
+    }
+
+#ifdef FEAT_GUI
+    if (gui.in_use) {
+	ui_inchar_async_callback_ = callback;
+	ui_inchar_async_wtime_ = wtime;
+	gui_inchar_async(buf, maxlen, wtime, tb_change_cnt, ui_inchar_async_callback);
+	return;
+    }
+#endif
+#ifndef NO_CONSOLE
+# ifdef FEAT_GUI
+    else
+# endif
+    {
+	retval = mch_inchar(buf, maxlen, wtime, tb_change_cnt);
+    }
+#endif
+
+    if (wtime == -1 || wtime > 100L)
+	/* block SIGHUP et al. */
+	(void)vim_handle_signal(SIGNAL_BLOCK);
+
+    ctrl_c_interrupts = TRUE;
+
+#ifdef NO_CONSOLE_INPUT
+theend:
+#endif
+#ifdef FEAT_PROFILE
+    if (do_profiling == PROF_YES && wtime != 0)
+	prof_inchar_exit();
+#endif
+    callback(retval);
+}
+
+#endif /* FEAT_GUI_WASM */
 
 #if defined(FEAT_TIMERS) || defined(PROT)
 /*

@@ -2957,6 +2957,7 @@ gui_wait_for_chars_or_timer(long wtime)
  * Returns OK if a character was found to be available within the given time,
  * or FAIL otherwise.
  */
+#ifndef FEAT_GUI_WASM
     int
 gui_wait_for_chars(long wtime, int tb_change_cnt)
 {
@@ -3053,6 +3054,140 @@ gui_inchar(
 	return read_from_input_buf(buf, (long)maxlen);
     return 0;
 }
+
+#else /* FEAT_GUI_WASM */
+
+static int gui_wait_for_chars_tb_change_cnt;
+static char_u *gui_inchar_async_buf;
+static int gui_inchar_async_maxlen;
+static int gui_inchar_async_tb_change_cnt;
+static void (*gui_inchar_async_callback)(int);
+#if defined(ELAPSED_FUNC)
+static ELAPSED_TYPE gui_inchar_async_start_tv;
+#endif
+
+static void
+gui_inchar_callback(int retval)
+{
+    int ret = 0;
+    if (retval && !typebuf_changed(gui_inchar_async_tb_change_cnt)) {
+	ret = read_from_input_buf(gui_inchar_async_buf, (long)gui_inchar_async_maxlen);
+    }
+    gui_inchar_async_callback(ret);
+}
+
+static void
+gui_wait_for_chars_callback(int retval)
+{
+    gui_mch_stop_blink(TRUE);
+    gui_inchar_callback(retval);
+}
+
+static void
+gui_wait_for_chars_callback_updatetime(int retval)
+{
+    gui_mch_stop_blink(TRUE);
+    if (retval == OK) {
+	gui_mch_stop_blink(TRUE);
+	gui_inchar_callback(retval);
+	return;
+    }
+
+    if (trigger_cursorhold()
+#ifdef ELAPSED_FUNC
+	&& ELAPSED_FUNC(gui_inchar_async_start_tv) >= p_ut
+#endif
+	&& typebuf.tb_change_cnt == gui_wait_for_chars_tb_change_cnt) {
+	char_u	buf[3];
+
+	/* Put K_CURSORHOLD in the input buffer. */
+	buf[0] = CSI;
+	buf[1] = KS_EXTRA;
+	buf[2] = (int)KE_CURSORHOLD;
+	add_to_input_buf(buf, 3);
+
+	gui_inchar_callback(OK);
+	return;
+    }
+
+    if (typebuf.tb_change_cnt == gui_wait_for_chars_tb_change_cnt) {
+	/* Blocking wait. */
+	before_blocking();
+	gui_mch_wait_for_chars_async(-1L, gui_wait_for_chars_callback);
+    } else {
+	gui_mch_stop_blink(TRUE);
+	gui_inchar_callback(FAIL);
+    }
+}
+
+void
+gui_wait_for_chars_async(long wtime, int tb_change_cnt)
+{
+    int	    retval;
+#if defined(ELAPSED_FUNC)
+    ELAPSED_TYPE start_tv;
+#endif
+
+#ifdef FEAT_MENU
+    /*
+     * If we're going to wait a bit, update the menus and mouse shape for the
+     * current State.
+     */
+    if (wtime != 0)
+	gui_update_menus(0);
+#endif
+
+    gui_mch_update();
+    if (input_available()){	/* Got char, return immediately */
+	gui_inchar_callback(OK);
+	return;
+    }
+    if (wtime == 0) {	/* Don't wait for char */
+	gui_inchar_callback(FAIL);
+	return;
+    }
+
+    /* Before waiting, flush any output to the screen. */
+    gui_mch_flush();
+
+    if (wtime > 0)
+    {
+	/* Blink when waiting for a character.	Probably only does something
+	 * for showmatch() */
+	gui_mch_start_blink();
+	gui_mch_wait_for_chars_async(wtime, gui_wait_for_chars_callback);
+	return;
+    }
+
+#if defined(ELAPSED_FUNC)
+    ELAPSED_INIT(start_tv);
+#endif
+
+    /*
+     * While we are waiting indefinitely for a character, blink the cursor.
+     */
+    gui_mch_start_blink();
+    gui_inchar_async_start_tv = start_tv;
+    gui_wait_for_chars_tb_change_cnt = tb_change_cnt;
+    gui_mch_wait_for_chars_async(wtime, gui_wait_for_chars_callback_updatetime);
+}
+
+void
+gui_inchar_async(
+    char_u  *buf,
+    int	    maxlen,
+    long    wtime,		/* milli seconds */
+    int	    tb_change_cnt,
+    void    (*callback)(int))
+{
+    gui_inchar_async_buf = buf;
+    gui_inchar_async_maxlen = maxlen;
+    gui_inchar_async_callback = callback;
+    gui_inchar_async_tb_change_cnt = tb_change_cnt;
+    gui_wait_for_chars_async(wtime, tb_change_cnt);
+}
+
+#endif /* FEAT_GUI_WASM */
 
 /*
  * Fill p[4] with mouse coordinates encoded for check_termcode().
