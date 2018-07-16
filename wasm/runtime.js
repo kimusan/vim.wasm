@@ -24,7 +24,7 @@ const VimWasmRuntime = {
                 this.renderer = renderer;
                 this.bounceTimerToken = null;
                 this.onResize = this.onResize.bind(this);
-                window.addEventListener('resize', this.onResize); // TODO: passive: true
+                window.addEventListener('resize', this.onResize, { passive: true });
             }
 
             WindowResize.prototype.onVimInit = function() {
@@ -498,18 +498,21 @@ const VimWasmRuntime = {
     // void vimwasm_set_fg_color(char *);
     vimwasm_set_fg_color: function(name) {
         name = Pointer_stringify(name);
+        debug('set_fg_color:', name);
         VW.renderer.setColorFG(name);
     },
 
     // void vimwasm_set_bg_color(char *);
     vimwasm_set_bg_color: function(name) {
         name = Pointer_stringify(name);
+        debug('set_bg_color:', name);
         VW.renderer.setColorBG(name);
     },
 
     // void vimwasm_set_sp_color(char *);
     vimwasm_set_sp_color: function(name) {
         name = Pointer_stringify(name);
+        debug('set_sp_color:', name);
         VW.renderer.setColorSP(name);
     },
 
@@ -528,18 +531,22 @@ const VimWasmRuntime = {
     // void vimwasm_draw_rect(int, int, int, int, char *, int);
     vimwasm_draw_rect: function(x, y, w, h, color, filled) {
         color = Pointer_stringify(color);
+        debug('draw_rect:', x, y, w, h, color, !!filled);
         VW.renderer.drawRect(x, y, w, h, color, !!filled);
     },
 
     // void vimwasm_draw_text(int, int, int, int, int, char *, int, int, int, int, int);
     vimwasm_draw_text: function(charHeight, lineHeight, charWidth, x, y, str, len, bold, underline, undercurl, strike) {
         const text = Pointer_stringify(str, len);
+        debug('draw_text:', x, y, text);
         VW.renderer.drawText(text, charHeight, lineHeight, charWidth, x, y, !!bold, !!underline, !!undercurl, !!strike);
     },
 
     // void vimwasm_set_font(char *, int);
     vimwasm_set_font: function(font_name, font_size) {
-        VW.renderer.setFont(Pointer_stringify(font_name), font_size);
+        font_name = Pointer_stringify(font_name);
+        debug('set_font:', font_name, font_size);
+        VW.renderer.setFont(font_name, font_size);
     },
 
     // void vimwasm_invert_rect(int, int, int, int);

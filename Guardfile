@@ -28,4 +28,8 @@ guard :shell do
     sep m[0]
     run 'configure'
   end
+  watch /^build\.sh$/ do |m|
+    sep m[0]
+    run 'emcc'
+  end
 end

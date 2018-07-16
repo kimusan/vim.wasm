@@ -209,7 +209,7 @@ gui_mch_set_shellsize(
     int base_height,
     int direction)
 {
-    printf("TODO: set_shellsize %d %d %ld %ld\n", width, height, Rows, Columns);
+    // Nothing to do since DOM element is already rendered
 }
 
 /*
@@ -302,13 +302,10 @@ gui_mch_get_fontname(GuiFont font, char_u *name)
 void
 gui_mch_set_font(GuiFont font)
 {
-    if (STRICMP(font, gui.norm_font) == 0) {
+    if (STRCMP(font, gui.norm_font) == 0) {
         // If it's the same value as previous, do nothing
         return;
     }
-#ifdef GUI_WASM_DEBUG
-    printf("set_font: name=%s size=%d\n", font, gui.font_height);
-#endif
     vimwasm_set_font((char *)font, gui.font_height);
     gui.norm_font = (GuiFont) vim_strsave((char_u *)font);
 }
@@ -1216,9 +1213,6 @@ gui_mch_set_fg_color(guicolor_T color)
     if (color == gui.fg_color) {
         return;
     }
-#ifdef GUI_WASM_DEBUG
-    printf("set_fg_color: #%lx\n", color);
-#endif
     gui.fg_color = color;
     set_color_as_code(color, gui.fg_color_code);
     vimwasm_set_fg_color(gui.fg_color_code);
@@ -1233,9 +1227,6 @@ gui_mch_set_bg_color(guicolor_T color)
     if (color == gui.bg_color) {
         return;
     }
-#ifdef GUI_WASM_DEBUG
-    printf("set_bg_color: #%lx\n", color);
-#endif
     gui.bg_color = color;
     set_color_as_code(color, gui.bg_color_code);
     vimwasm_set_bg_color(gui.bg_color_code);
@@ -1250,9 +1241,6 @@ gui_mch_set_sp_color(guicolor_T color)
     if (color == gui.sp_color) {
         return;
     }
-#ifdef GUI_WASM_DEBUG
-    printf("set_sp_color: #%lx\n", color);
-#endif
     gui.sp_color = color;
     set_color_as_code(color, gui.sp_color_code);
     vimwasm_set_sp_color(gui.sp_color_code);
@@ -1261,9 +1249,6 @@ gui_mch_set_sp_color(guicolor_T color)
 static void
 draw_rect(int row, int col, int row2, int col2, char *color_code, int filled)
 {
-#ifdef GUI_WASM_DEBUG
-    printf("draw_rect: %s row=%d col=%d row2=%d col2=%d filled=%d\n", color_code, row, col, row2, col2, filled);
-#endif
     int x = gui.char_width * col;
     int y = gui.char_height * row;
     int w = gui.char_width * (col2 - col + 1);
@@ -1279,13 +1264,6 @@ gui_mch_draw_string(int row, int col, char_u *s, int len, int flags)
     }
 
     // TODO?: Should consider flags&DRAW_CURSOR?
-
-#ifdef GUI_WASM_DEBUG
-    char saved = s[len];
-    s[len] = '\0';
-    printf("draw_string: '%s' row=%d col=%d flags=%x\n", s, row, col, flags);
-    s[len] = saved;
-#endif
 
     vimwasm_draw_text(
         gui.font_height,
