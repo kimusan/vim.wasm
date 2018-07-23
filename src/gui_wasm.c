@@ -14,6 +14,7 @@
 
 #ifdef FEAT_GUI_WASM
 #include <math.h>
+#include <time.h>
 #include "vim.h"
 
 
@@ -1422,17 +1423,19 @@ gui_mch_update(void)
 int
 gui_mch_wait_for_chars(int wtime)
 {
-    int t = 0;
-    int step = 10;
+    if (input_available()) {
+        return OK;
+    }
+    long start;
+    start = clock();
     while(1) {
+        vimwasm_sleep_frame();
         if (input_available()) {
             return OK;
         }
-        t += step;
-        if ((wtime >= 0) && (t >= wtime)) {
+        if ((wtime >= 0) && ((clock() - start) >= wtime)) {
             return FAIL;
         }
-        emscripten_sleep(step);
     }
 }
 

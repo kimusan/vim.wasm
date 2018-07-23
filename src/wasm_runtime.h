@@ -21,9 +21,6 @@
 
 #ifdef FEAT_GUI_WASM
 
-// Emterpreter
-void emscripten_sleep(int);
-
 void vimwasm_will_init(void);
 void vimwasm_will_exit(int);
 int vimwasm_get_dom_width(void);
@@ -43,6 +40,7 @@ int vimwasm_get_mouse_x(void);
 int vimwasm_get_mouse_y(void);
 void vimwasm_resize(int, int);
 int vimwasm_call_shell(char *);
+void vimwasm_sleep_frame();
 
 #endif /* FEAT_GUI_WASM */
 

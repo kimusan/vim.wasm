@@ -20,6 +20,19 @@
         printErr: console.error,
       };
       var debug = console.log;
+
+      if (!('serviceWorker' in navigator)) {
+          throw Exception('This browser does not support ServiceWorker. This site does not work!!');
+      }
+
+      navigator.serviceWorker
+          .register('/sw.js')
+          .then(function(registration) {
+              debug('ServiceWorker registration successful with scope: ', registration.scope);
+          })
+          .catch(function(err) {
+              console.error('ServiceWorker registration failed: ', err);
+          });
     </script>
     {{{ SCRIPT }}}
   </body>

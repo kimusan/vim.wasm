@@ -546,6 +546,13 @@ const VimWasmRuntime = {
         debug('image_scroll:', x, sy, dy, w, h);
         VW.renderer.imageScroll(x, sy, dy, w, h);
     },
+
+    // void vimwasm_sleep_frame();
+    vimwasm_sleep_frame() {
+        const req = new XMLHttpRequest();
+        req.open('GET', '/sleep-frame.txt', false);
+        req.send(null);
+    },
 };
 
 autoAddDeps(VimWasmRuntime, '$VW');
