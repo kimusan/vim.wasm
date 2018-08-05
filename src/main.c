@@ -1317,6 +1317,7 @@ main_loop_body(
 		    normal_cmd(oa, TRUE);
 #else
 		{
+		    printf("Before normal_cmd1\n");
 		    normal_cmd_async(oa, TRUE, NULL);
 		    return 0;
 		}
@@ -1333,6 +1334,7 @@ main_loop_body(
 #else
 		// Exit this tick. normal_cmd_async() starts async input loop and finally
 		// backs to this main loop.
+		printf("Before normal_cmd2\n");
 		normal_cmd_async(oa, TRUE, NULL);
 		return 0;
 #endif

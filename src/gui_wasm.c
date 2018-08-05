@@ -126,7 +126,6 @@ gui_mch_wait_for_chars_async(int wait_ms, void (*cb)(int))
     assert(!input_loop_is_running && "Input loop is already running at wait_with_input_loop()");
     assert(input_loop_initialized && "Input loop is not yet initialized");
 #endif
-
     // If already input is available, immediately fire callback and back to main loop
     if (input_available()) {
         cb(OK);

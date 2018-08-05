@@ -1367,6 +1367,7 @@ normal_cmd_async_normal_end()
     c = finish_op;
 #endif
     finish_op = FALSE;
+    printf("finish_op=FALSE\n");
 #ifdef CURSOR_SHAPE
     /* Redraw the cursor with another shape, if we were in Operator-pending
      * mode or did a replace command. */
@@ -1504,6 +1505,7 @@ normal_cmd_async_after_additional_char()
      * Call the command function found in the commands table.
      */
     normal_cmd_state.ca.arg = nv_cmds[normal_cmd_state.idx].cmd_arg;
+    printf("normal_cmd: execute command %i %c\n", normal_cmd_state.idx, nv_cmds[normal_cmd_state.idx].cmd_char);
     (nv_cmds[normal_cmd_state.idx].cmd_func)(&normal_cmd_state.ca);
 
     /*
@@ -1847,6 +1849,7 @@ normal_cmd_async_handle_g(int c)
 static void
 normal_cmd_async_after_getcount()
 {
+    printf("normal_cmd: after getcount\n");
     if (normal_cmd_state.c == K_CURSORHOLD)
     {
 	/* Save the count values so that ca.opcount and ca.count0 are exactly
@@ -2111,6 +2114,8 @@ normal_cmd_async_handle_count_loop()
 static void
 normal_cmd_async_getcount()
 {
+    printf("normal_cmd: getcount\n");
+// getcount:
     if (VIsual_active && VIsual_select)
     {
 	normal_cmd_async_after_getcount();
@@ -2128,6 +2133,7 @@ normal_cmd_async_getcount()
 static void
 normal_cmd_async_got_char(int c)
 {
+    printf("normal_cmd: after got char\n");
     normal_cmd_state.c = c;
     LANGMAP_ADJUST(normal_cmd_state.c, get_real_state() != SELECTMODE);
 
@@ -2188,6 +2194,7 @@ normal_cmd_async(
 #ifdef FEAT_EVAL
     normal_cmd_state.set_prevcount = FALSE;
 #endif
+    printf("normal_cmd: start async\n");
 
     vim_memset(&normal_cmd_state.ca, 0, sizeof(normal_cmd_state.ca));	/* also resets ca.retval */
     normal_cmd_state.ca.oap = normal_cmd_state.oap;
@@ -2251,6 +2258,8 @@ normal_cmd_async(
     if (toplevel && readbuf1_empty())
 	set_vcount_ca(&normal_cmd_state.ca, &normal_cmd_state.set_prevcount);
 #endif
+
+    printf("normal_cmd: before first safe_vgetc\n");
 
     /*
      * Get the command character from the user.
@@ -10026,6 +10035,7 @@ nv_esc(cmdarg_T *cap)
     static void
 nv_edit(cmdarg_T *cap)
 {
+    printf("nv_edit: %c\n", cap->cmdchar);
     /* <Insert> is equal to "i" */
     if (cap->cmdchar == K_INS || cap->cmdchar == K_KINS)
 	cap->cmdchar = 'i';

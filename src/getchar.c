@@ -484,6 +484,7 @@ flush_buffers(int flush_typeahead)
     {
 	typebuf.tb_off += typebuf.tb_maplen;
 	typebuf.tb_len -= typebuf.tb_maplen;
+	printf("inchar: type buffer is updated tb_maplen=%d tb_off=%d tb_len=%d\n", typebuf.tb_maplen, typebuf.tb_off, typebuf.tb_len);
     }
     typebuf.tb_maplen = 0;
     typebuf.tb_silent = 0;
@@ -504,6 +505,7 @@ flush_buffers_typeahead_callback(int ret)
 	return;
     }
 
+    printf("inchar: type buffer is reset\n");
     typebuf.tb_off = MAXMAPLEN;
     typebuf.tb_len = 0;
 #if defined(FEAT_CLIENTSERVER) || defined(FEAT_EVAL)
@@ -1979,6 +1981,7 @@ vgetc_async_mbytes_loop()
 static void
 vgetc_async_after_peeks()
 {
+    printf("vgetc_async: after peek\n");
     /* a keypad or special function key was not mapped, use it like
      * its ASCII equivalent */
     int c = vgetc_state.c;
@@ -2065,6 +2068,7 @@ vgetc_async_after_peeks()
 static void
 vgetc_async_peeks2(int c)
 {
+    printf("vgetc_async: second peeked\n");
     vgetc_state.c = c;
 
     --no_mapping;
@@ -2105,6 +2109,7 @@ vgetc_async_peeks2(int c)
 static void
 vgetc_async_peeks1(int c)
 {
+    printf("vgetc_async: first peeked\n");
     vgetc_state.c2 = c;
     vgetorpeek_async(TRUE, vgetc_async_peeks2);
 }
@@ -2112,6 +2117,7 @@ vgetc_async_peeks1(int c)
 static void
 vgetc_async_after_first_peek(int c)
 {
+    printf("vgetc_async: before peek\n");
     vgetc_state.c = c;
     if (vgetc_state.did_inc)
     {
@@ -2139,6 +2145,7 @@ vgetc_async_after_first_peek(int c)
 static void
 vgetc_async_loop_entry()
 {
+    printf("vgetc_async: loop tick\n");
     /* this is done twice if there are modifiers */
     vgetc_state.did_inc = FALSE;
     if (mod_mask
@@ -2215,6 +2222,7 @@ safe_vgetc_async_finish(int c)
     if (c == NUL) {
 	c = get_keystroke();
     }
+    printf("safe_vgetc: finished %c\n", c);
     safe_vgetc_async_callback(c);
 }
 
@@ -3516,6 +3524,8 @@ vgetorpeek_async_got_char(int c)
 {
     vgetorpeek_state.c = c;
 
+    printf("vgetorpeek: got char %d %c\n", c, c);
+
 #ifdef FEAT_CMDL_INFO
     if (vgetorpeek_state.i != 0)
 	pop_showcmd();
@@ -3531,6 +3541,7 @@ vgetorpeek_async_got_char(int c)
     }
 
     if (vgetorpeek_state.c < 0) {
+	printf("vgetorpeek: continue 4\n");
 	vgetorpeek_async_inner_loop(); /* end of input script reached */
 	return; /* continue for(;;) */
     }
@@ -3544,6 +3555,7 @@ vgetorpeek_async_got_char(int c)
 	if (vgetorpeek_state.wait_tb_len > 0)	/* timed out */
 	{
 	    vgetorpeek_state.timedout = TRUE;
+	    printf("vgetorpeek: continue 5: %d\n", vgetorpeek_state.wait_tb_len);
 	    vgetorpeek_async_inner_loop();
 	    return; /* continue for(;;) */
 	}
@@ -3559,6 +3571,7 @@ vgetorpeek_async_got_char(int c)
 #endif
     }
 
+    printf("vgetorpeek: end of inner loop\n");
     // End of for(;;).
     // Inner loop is infinite for(;;)
     vgetorpeek_async_inner_loop();
@@ -3583,7 +3596,10 @@ vgetorpeek_async_insert_esc_after()
 {
     int n;
 
+    printf("vgetorpeek: after ESC handling (tb_len: %d)\n", typebuf.tb_len);
+
     if (vgetorpeek_state.c < 0) {
+	printf("vgetorpeek: continue 1\n");
 	vgetorpeek_async_inner_loop(); /* end of input script reached */
 	return; /* continue for(;;) */
     }
@@ -3598,6 +3614,7 @@ vgetorpeek_async_insert_esc_after()
     /* buffer full, don't map */
     if (typebuf.tb_len >= typebuf.tb_maplen + MAXMAPLEN) {
 	vgetorpeek_state.timedout = TRUE;
+	printf("vgetorpeek: continue 2\n");
 	vgetorpeek_async_inner_loop();
 	return; /* continue for(;;) */
     }
@@ -3614,6 +3631,7 @@ vgetorpeek_async_insert_esc_after()
 	if (typebuf.tb_len > 0)
 	{
 	    vgetorpeek_state.timedout = TRUE;
+	    printf("vgetorpeek: continue 3\n");
 	    vgetorpeek_async_inner_loop();
 	    return; /* continue for(;;) */
 	}
@@ -3728,10 +3746,7 @@ vgetorpeek_async_insert_esc_after()
 	vgetorpeek_state.timedout = FALSE;
 
     vgetorpeek_state.wait_tb_len = typebuf.tb_len;
-    inchar_async(
-	typebuf.tb_buf + typebuf.tb_off + typebuf.tb_len,
-	typebuf.tb_buflen - typebuf.tb_off - typebuf.tb_len - 1,
-	!vgetorpeek_state.advance
+    int tmp = !vgetorpeek_state.advance
 	    ? 0
 	    : ((typebuf.tb_len == 0
 		    || !(p_timeout || (p_ttimeout
@@ -3739,7 +3754,18 @@ vgetorpeek_async_insert_esc_after()
 		    ? -1L
 		    : ((vgetorpeek_state.keylen == KEYLEN_PART_KEY && p_ttm >= 0)
 			    ? p_ttm
-			    : p_tm)),
+			    : p_tm));
+    // printf("vgetorpeek: inchar wait time: %d, %d\n", tmp, typebuf.tb_len);
+    printf("vgetorpeek: inchar wait time: tb_buflen=%d tb_off=%d tb_len=%d\n", typebuf.tb_buflen, typebuf.tb_off, typebuf.tb_len);
+    printf("vgetorpeek: inchar(%d, %d, %d) tb_len=%d\n",
+	typebuf.tb_buf + typebuf.tb_off + typebuf.tb_len,
+	typebuf.tb_buflen - typebuf.tb_off - typebuf.tb_len - 1,
+	tmp,
+	typebuf.tb_len);
+    inchar_async(
+	typebuf.tb_buf + typebuf.tb_off + typebuf.tb_len,
+	typebuf.tb_buflen - typebuf.tb_off - typebuf.tb_len - 1,
+	tmp,
 	vgetorpeek_async_got_char);
 }
 
@@ -3856,6 +3882,7 @@ vgetorpeek_async_insert_esc(int inchar_ret)
 static void
 vgetorpeek_async_inner_loop()
 {
+    printf("vgetorpeek: inner loop\n");
     /*
      * Loop until we either find a matching mapped key, or we
      * are sure that it is not a mapped key.
@@ -4462,6 +4489,7 @@ vgetorpeek_async_inner_loop()
 static void
 vgetorpeek_async_outer_loop()
 {
+    printf("vgetorpeek: outer loop\n");
 /*
  * get a character: 1. from the stuffbuffer
  */
@@ -4493,6 +4521,7 @@ vgetorpeek_async_outer_loop()
 static void
 vgetorpeek_async(int advance, void (*callback)(int))
 {
+    printf("vgetorpeek: start: %s\n", advance ? "forward" : "backward");
     /*
      * This function doesn't work very well when called recursively.  This may
      * happen though, because of:
@@ -4702,6 +4731,7 @@ inchar_async_finish(int len)
     if (len > 0 && ++typebuf.tb_change_cnt == 0)
 	typebuf.tb_change_cnt = 1;
 
+    printf("inchar: finish len=%d tb_buflen=%d\n", len, typebuf.tb_len);
     inchar_async_state.callback(fix_input_buffer(inchar_async_state.buf, len));
     // return fix_input_buffer(buf, len);
 }
@@ -4714,6 +4744,8 @@ inchar_async(char_u *buf, int maxlen, long wait_time, void (*callback)(int))
 	callback(inchar(buf, maxlen, wait_time));
 	return;
     }
+
+    printf("inchar: finish tb_buflen=%d\n", typebuf.tb_len);
 
     inchar_async_state.buf = buf;
     inchar_async_state.callback = callback;

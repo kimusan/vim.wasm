@@ -1235,6 +1235,7 @@ gui_update_cursor(
 	}
 
 	old_hl_mask = gui.highlight_mask;
+	printf("SHAPE: %d %d\n", shape->shape, get_shape_idx(FALSE));
 	if (shape->shape == SHAPE_BLOCK
 #ifdef FEAT_HANGULIN
 		|| composing_hangul
